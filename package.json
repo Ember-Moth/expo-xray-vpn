@@ -35,7 +35,6 @@
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf build",
-    "prepublishOnly": "pnpm build",
     "lint": "biome check .",
     "format": "biome format --write ."
   },
