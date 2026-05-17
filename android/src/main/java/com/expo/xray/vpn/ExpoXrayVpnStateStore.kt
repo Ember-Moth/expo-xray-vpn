@@ -1,6 +1,6 @@
-package com.starlink.vpn
+package com.expo.xray.vpn
 
-object StarlinkVpnStateStore {
+object ExpoXrayVpnStateStore {
   var stateListener: ((Map<String, Any?>) -> Unit)? = null
 
   private var connectedAt: Long? = null

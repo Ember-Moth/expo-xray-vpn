@@ -1,4 +1,4 @@
-package com.starlink.vpn
+package com.expo.xray.vpn
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -11,13 +11,13 @@ import android.os.Build
 import android.util.Log
 import java.util.concurrent.Executors
 
-class StarlinkVpnService : VpnService() {
+class ExpoXrayVpnService : VpnService() {
   private val commandLock = Any()
   private val lifecycleExecutor = Executors.newSingleThreadExecutor { runnable ->
-    Thread(runnable, "StarlinkVpnLifecycle")
+    Thread(runnable, "ExpoXrayVpnLifecycle")
   }
   private val tunnelLock = Any()
-  private val tunnelRuntime by lazy { StarlinkVpnTunnelRuntime(this) }
+  private val tunnelRuntime by lazy { ExpoXrayVpnTunnelRuntime(this) }
 
   @Volatile
   private var latestCommandId = 0
@@ -26,7 +26,7 @@ class StarlinkVpnService : VpnService() {
     val commandIntent = intent ?: return START_NOT_STICKY
 
     when {
-      StarlinkVpnIntentCodec.isConnect(commandIntent) -> {
+      ExpoXrayVpnIntentCodec.isConnect(commandIntent) -> {
         val commandId = nextCommandId()
         activeService = this
         // startForeground intentionally deferred to startTunnel() to
@@ -42,7 +42,7 @@ class StarlinkVpnService : VpnService() {
           startTunnel(commandIntent, commandId)
         }
       }
-      StarlinkVpnIntentCodec.isDisconnect(commandIntent) -> {
+      ExpoXrayVpnIntentCodec.isDisconnect(commandIntent) -> {
         val commandId = nextCommandId()
         activeService = this
         startForeground(NOTIFICATION_ID, createNotification("VPN connection is stopping"))
@@ -61,13 +61,13 @@ class StarlinkVpnService : VpnService() {
     val releaseErrors = releaseTunnel(stopForeground = true)
     if (releaseErrors.isNotEmpty()) {
       Log.w(TAG, "Tunnel release failed on destroy: ${releaseErrors.joinToString("; ")}")
-      StarlinkVpnStateStore.update(
+      ExpoXrayVpnStateStore.update(
         state = "error",
         error = releaseErrors.joinToString("; "),
         errorCode = ERR_VPN_RELEASE_FAILED
       )
-    } else if (StarlinkVpnStateStore.currentState() != "error") {
-      StarlinkVpnStateStore.update("disconnected")
+    } else if (ExpoXrayVpnStateStore.currentState() != "error") {
+      ExpoXrayVpnStateStore.update("disconnected")
     }
     activeService = null
     lifecycleExecutor.shutdownNow()
@@ -76,7 +76,7 @@ class StarlinkVpnService : VpnService() {
 
   override fun onRevoke() {
     val commandId = nextCommandId()
-    StarlinkVpnStateStore.update("disconnecting")
+    ExpoXrayVpnStateStore.update("disconnecting")
     lifecycleExecutor.execute {
       stopTunnel(commandId)
     }
@@ -89,8 +89,8 @@ class StarlinkVpnService : VpnService() {
         return
       }
 
-      var profileId = StarlinkVpnIntentCodec.readProfileId(intent)
-      var profileName = StarlinkVpnIntentCodec.readProfileName(intent)
+      var profileId = ExpoXrayVpnIntentCodec.readProfileId(intent)
+      var profileName = ExpoXrayVpnIntentCodec.readProfileName(intent)
       val previousReleaseErrors = releaseTunnelLocked(stopForeground = false)
       logReleaseErrors("Tunnel release before reconnect", previousReleaseErrors)
 
@@ -115,7 +115,7 @@ class StarlinkVpnService : VpnService() {
 
       val errorCode = ERR_VPN_RUNTIME_FAILED
       try {
-        val config = StarlinkVpnIntentCodec.readConnectConfig(intent)
+        val config = ExpoXrayVpnIntentCodec.readConnectConfig(intent)
         profileId = config.profileId
         profileName = config.profileName
         tunnelRuntime.start(config)
@@ -126,7 +126,7 @@ class StarlinkVpnService : VpnService() {
         }
 
         markConnected(config)
-      } catch (error: StarlinkVpnTunnelException) {
+      } catch (error: ExpoXrayVpnTunnelException) {
         val releaseErrors = releaseTunnelLocked(stopForeground = false)
         updateRuntimeError(error.errorCode, error, releaseErrors, profileId, profileName)
         activeService = null
@@ -152,11 +152,11 @@ class StarlinkVpnService : VpnService() {
       activeService = null
 
       if (releaseErrors.isEmpty()) {
-        StarlinkVpnStateStore.update("disconnected")
+        ExpoXrayVpnStateStore.update("disconnected")
       } else {
         val error = releaseErrors.joinToString("; ")
         Log.w(TAG, "Tunnel release failed: $error")
-        StarlinkVpnStateStore.update(
+        ExpoXrayVpnStateStore.update(
           state = "error",
           error = error,
           errorCode = ERR_VPN_RELEASE_FAILED
@@ -190,7 +190,7 @@ class StarlinkVpnService : VpnService() {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
       val channel = NotificationChannel(
         CHANNEL_ID,
-        "StarLink VPN",
+        "Xray VPN",
         NotificationManager.IMPORTANCE_LOW
       )
       manager.createNotificationChannel(channel)
@@ -213,7 +213,7 @@ class StarlinkVpnService : VpnService() {
     }
 
     return builder
-      .setContentTitle("StarLink VPN")
+      .setContentTitle("Xray VPN")
       .setContentText(contentText)
       .setSmallIcon(android.R.drawable.ic_dialog_info)
       .setContentIntent(pendingIntent)
@@ -247,9 +247,9 @@ class StarlinkVpnService : VpnService() {
     }
   }
 
-  private fun markConnected(config: StarlinkVpnRuntimeConfig) {
+  private fun markConnected(config: ExpoXrayVpnRuntimeConfig) {
     startForeground(NOTIFICATION_ID, createNotification())
-    StarlinkVpnStateStore.update(
+    ExpoXrayVpnStateStore.update(
       state = "connected",
       profileId = config.profileId,
       profileName = config.profileName
@@ -269,7 +269,7 @@ class StarlinkVpnService : VpnService() {
   ) {
     val message = buildRuntimeErrorMessage(error, releaseErrors)
     Log.e(TAG, "VPN runtime error [$errorCode]: $message", error)
-    StarlinkVpnStateStore.update(
+    ExpoXrayVpnStateStore.update(
       state = "error",
       error = message,
       errorCode = errorCode,
@@ -298,17 +298,17 @@ class StarlinkVpnService : VpnService() {
   }
 
   companion object {
-    private const val CHANNEL_ID = "starlink_vpn"
+    private const val CHANNEL_ID = "expo_xray_vpn"
     private const val ERR_VPN_RELEASE_FAILED = "ERR_VPN_RELEASE_FAILED"
     private const val ERR_VPN_RUNTIME_FAILED = "ERR_VPN_RUNTIME_FAILED"
     private const val NOTIFICATION_ID = 1001
-    private const val TAG = "StarlinkVpnService"
+    private const val TAG = "ExpoXrayVpnService"
 
     @Volatile
-    private var activeService: StarlinkVpnService? = null
+    private var activeService: ExpoXrayVpnService? = null
 
-    fun startConnect(context: Context, config: StarlinkVpnRuntimeConfig) {
-      val intent = StarlinkVpnIntentCodec.createConnectIntent(context, config)
+    fun startConnect(context: Context, config: ExpoXrayVpnRuntimeConfig) {
+      val intent = ExpoXrayVpnIntentCodec.createConnectIntent(context, config)
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         context.startForegroundService(intent)
       } else {
@@ -317,7 +317,7 @@ class StarlinkVpnService : VpnService() {
     }
 
     fun startDisconnect(context: Context) {
-      val intent = StarlinkVpnIntentCodec.createDisconnectIntent(context)
+      val intent = ExpoXrayVpnIntentCodec.createDisconnectIntent(context)
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         context.startForegroundService(intent)
       } else {

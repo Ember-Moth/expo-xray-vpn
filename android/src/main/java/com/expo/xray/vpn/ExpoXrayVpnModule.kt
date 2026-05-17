@@ -1,4 +1,4 @@
-package com.starlink.vpn
+package com.expo.xray.vpn
 
 import android.app.Activity
 import android.content.Context
@@ -12,21 +12,21 @@ import expo.modules.kotlin.records.Record
 import libXray.LibXray
 import org.json.JSONArray
 
-class StarlinkVpnModule : Module() {
+class ExpoXrayVpnModule : Module() {
   private var pendingPermissionPromise: Promise? = null
 
   override fun definition() = ModuleDefinition {
-    Name("StarlinkVpn")
+    Name("ExpoXrayVpn")
     Events("onStateChange", "onTrafficUpdate")
 
     OnCreate {
-      StarlinkVpnStateStore.stateListener = { payload ->
+      ExpoXrayVpnStateStore.stateListener = { payload ->
         sendEvent("onStateChange", payload)
       }
     }
 
     OnDestroy {
-      StarlinkVpnStateStore.stateListener = null
+      ExpoXrayVpnStateStore.stateListener = null
       pendingPermissionPromise?.reject(
         "ERR_VPN_PERMISSION_CANCELLED",
         "The VPN permission request was interrupted.",
@@ -45,9 +45,9 @@ class StarlinkVpnModule : Module() {
       val context = requireContext()
       val granted = payload.resultCode == Activity.RESULT_OK || VpnService.prepare(context) == null
       if (granted) {
-        StarlinkVpnStateStore.update("disconnected")
+        ExpoXrayVpnStateStore.update("disconnected")
       } else {
-        StarlinkVpnStateStore.update(
+        ExpoXrayVpnStateStore.update(
           state = "error",
           error = "VPN permission was denied.",
           errorCode = ERR_VPN_PERMISSION_DENIED
@@ -77,15 +77,15 @@ class StarlinkVpnModule : Module() {
       }
 
       pendingPermissionPromise = promise
-      StarlinkVpnStateStore.update("preparing")
+      ExpoXrayVpnStateStore.update("preparing")
       activity.startActivityForResult(permissionIntent, VPN_PERMISSION_REQUEST_CODE)
     }
 
-    AsyncFunction("connect") { config: StarlinkVpnConnectOptions ->
+    AsyncFunction("connect") { config: ExpoXrayVpnConnectOptions ->
       val context = requireContext()
 
       if (VpnService.prepare(context) != null) {
-        StarlinkVpnStateStore.update(
+        ExpoXrayVpnStateStore.update(
           state = "error",
           error = "VPN permission is required before connecting.",
           errorCode = ERR_VPN_PERMISSION_REQUIRED
@@ -101,9 +101,9 @@ class StarlinkVpnModule : Module() {
         throw CodedException("ERR_INVALID_XRAY_CONFIG", "xrayConfigJson is required.", null)
       }
       validateConnectOptions(config)
-      val runtimeConfig = StarlinkVpnRuntimeConfig.fromOptions(config)
+      val runtimeConfig = ExpoXrayVpnRuntimeConfig.fromOptions(config)
 
-      StarlinkVpnStateStore.update(
+      ExpoXrayVpnStateStore.update(
         state = "connecting",
         profileId = runtimeConfig.profileId,
         profileName = runtimeConfig.profileName
@@ -114,31 +114,31 @@ class StarlinkVpnModule : Module() {
         profileId = runtimeConfig.profileId,
         profileName = runtimeConfig.profileName
       ) {
-        StarlinkVpnService.startConnect(context, runtimeConfig)
+        ExpoXrayVpnService.startConnect(context, runtimeConfig)
       }
 
-      StarlinkVpnStateStore.snapshot()
+      ExpoXrayVpnStateStore.snapshot()
     }
 
     AsyncFunction("disconnect") {
       val context = requireContext()
-      StarlinkVpnStateStore.update("disconnecting")
+      ExpoXrayVpnStateStore.update("disconnecting")
       startVpnService(
         errorCode = ERR_SERVICE_START_FAILED,
         profileId = null,
         profileName = null
       ) {
-        StarlinkVpnService.startDisconnect(context)
+        ExpoXrayVpnService.startDisconnect(context)
       }
-      StarlinkVpnStateStore.snapshot()
+      ExpoXrayVpnStateStore.snapshot()
     }
 
     AsyncFunction("getState") {
-      StarlinkVpnStateStore.snapshot()
+      ExpoXrayVpnStateStore.snapshot()
     }
 
     AsyncFunction("protectSocket") { fd: Int ->
-      StarlinkVpnService.protectActiveSocket(fd)
+      ExpoXrayVpnService.protectActiveSocket(fd)
     }
 
     AsyncFunction("getFreePorts") { count: Int ->
@@ -199,7 +199,7 @@ class StarlinkVpnModule : Module() {
     }
   }
 
-  private fun validateConnectOptions(config: StarlinkVpnConnectOptions) {
+  private fun validateConnectOptions(config: ExpoXrayVpnConnectOptions) {
     validateOptionalString(config.dnsServer, "dnsServer")
     validateOptionalString(config.tunAddress, "tunAddress")
 
@@ -268,7 +268,7 @@ class StarlinkVpnModule : Module() {
       block()
     } catch (error: Throwable) {
       val message = error.localizedMessage ?: error.message ?: "Unable to start VPN service."
-      StarlinkVpnStateStore.update(
+      ExpoXrayVpnStateStore.update(
         state = "error",
         error = message,
         errorCode = errorCode,
@@ -288,7 +288,7 @@ class StarlinkVpnModule : Module() {
   }
 }
 
-class StarlinkVpnRoute : Record {
+class ExpoXrayVpnRoute : Record {
   @Field
   var address: String = ""
 
@@ -296,7 +296,7 @@ class StarlinkVpnRoute : Record {
   var prefix: Int = 0
 }
 
-class StarlinkVpnConnectOptions : Record {
+class ExpoXrayVpnConnectOptions : Record {
   @Field
   var allowedApplications: List<String> = emptyList()
 
@@ -316,7 +316,7 @@ class StarlinkVpnConnectOptions : Record {
   var profileName: String? = null
 
   @Field
-  var routes: List<StarlinkVpnRoute> = emptyList()
+  var routes: List<ExpoXrayVpnRoute> = emptyList()
 
   @Field
   var tunAddress: String? = null

@@ -1,11 +1,11 @@
-package com.starlink.vpn
+package com.expo.xray.vpn
 
 import android.content.Context
 import android.content.Intent
 
-object StarlinkVpnIntentCodec {
-  private const val ACTION_CONNECT = "com.starlink.vpn.CONNECT"
-  private const val ACTION_DISCONNECT = "com.starlink.vpn.DISCONNECT"
+object ExpoXrayVpnIntentCodec {
+  private const val ACTION_CONNECT = "com.expo.xray.vpn.CONNECT"
+  private const val ACTION_DISCONNECT = "com.expo.xray.vpn.DISCONNECT"
   private const val EXTRA_ALLOWED_APPLICATIONS = "allowedApplications"
   private const val EXTRA_DISALLOWED_APPLICATIONS = "disallowedApplications"
   private const val EXTRA_DNS_SERVER = "dnsServer"
@@ -26,11 +26,11 @@ object StarlinkVpnIntentCodec {
     return intent.action == ACTION_DISCONNECT
   }
 
-  fun createConnectIntent(context: Context, config: StarlinkVpnRuntimeConfig): Intent {
+  fun createConnectIntent(context: Context, config: ExpoXrayVpnRuntimeConfig): Intent {
     val routeAddresses = ArrayList(config.routes.map { route -> route.address })
     val routePrefixes = ArrayList(config.routes.map { route -> route.prefix })
 
-    return Intent(context, StarlinkVpnService::class.java)
+    return Intent(context, ExpoXrayVpnService::class.java)
       .setAction(ACTION_CONNECT)
       .putStringArrayListExtra(EXTRA_ALLOWED_APPLICATIONS, ArrayList(config.allowedApplications))
       .putStringArrayListExtra(EXTRA_DISALLOWED_APPLICATIONS, ArrayList(config.disallowedApplications))
@@ -46,35 +46,35 @@ object StarlinkVpnIntentCodec {
   }
 
   fun createDisconnectIntent(context: Context): Intent {
-    return Intent(context, StarlinkVpnService::class.java).setAction(ACTION_DISCONNECT)
+    return Intent(context, ExpoXrayVpnService::class.java).setAction(ACTION_DISCONNECT)
   }
 
-  fun readConnectConfig(intent: Intent): StarlinkVpnRuntimeConfig {
+  fun readConnectConfig(intent: Intent): ExpoXrayVpnRuntimeConfig {
     val routeAddresses = intent.getStringArrayListExtra(EXTRA_ROUTE_ADDRESSES).orEmpty()
     val routePrefixes = intent.getIntegerArrayListExtra(EXTRA_ROUTE_PREFIXES).orEmpty()
     val routes = if (routeAddresses.isEmpty()) {
-      StarlinkVpnRuntimeConfig.defaultRoutes()
+      ExpoXrayVpnRuntimeConfig.defaultRoutes()
     } else {
       routeAddresses.mapIndexed { index, address ->
-        StarlinkVpnRouteConfig(
+        ExpoXrayVpnRouteConfig(
           address = address,
           prefix = routePrefixes.getOrElse(index) { 0 }
         )
       }
     }
 
-    return StarlinkVpnRuntimeConfig(
+    return ExpoXrayVpnRuntimeConfig(
       allowedApplications = intent.getStringArrayListExtra(EXTRA_ALLOWED_APPLICATIONS).orEmpty(),
       disallowedApplications = intent.getStringArrayListExtra(EXTRA_DISALLOWED_APPLICATIONS).orEmpty(),
       dnsServer = intent.getStringExtra(EXTRA_DNS_SERVER)
-        ?: StarlinkVpnRuntimeConfig.DEFAULT_DNS_SERVER,
-      mtu = intent.getIntExtra(EXTRA_MTU, StarlinkVpnRuntimeConfig.DEFAULT_MTU),
+        ?: ExpoXrayVpnRuntimeConfig.DEFAULT_DNS_SERVER,
+      mtu = intent.getIntExtra(EXTRA_MTU, ExpoXrayVpnRuntimeConfig.DEFAULT_MTU),
       profileId = readProfileId(intent),
       profileName = readProfileName(intent),
       routes = routes,
       tunAddress = intent.getStringExtra(EXTRA_TUN_ADDRESS)
-        ?: StarlinkVpnRuntimeConfig.DEFAULT_TUN_ADDRESS,
-      tunPrefix = intent.getIntExtra(EXTRA_TUN_PREFIX, StarlinkVpnRuntimeConfig.DEFAULT_TUN_PREFIX),
+        ?: ExpoXrayVpnRuntimeConfig.DEFAULT_TUN_ADDRESS,
+      tunPrefix = intent.getIntExtra(EXTRA_TUN_PREFIX, ExpoXrayVpnRuntimeConfig.DEFAULT_TUN_PREFIX),
       xrayConfigJson = intent.getStringExtra(EXTRA_XRAY_CONFIG_JSON)
         ?: throw IllegalArgumentException("xrayConfigJson is required.")
     )

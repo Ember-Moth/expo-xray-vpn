@@ -1,4 +1,4 @@
-package com.starlink.vpn
+package com.expo.xray.vpn
 
 import android.os.ParcelFileDescriptor
 import android.util.Log
@@ -8,34 +8,34 @@ import java.io.IOException
 import libXray.DialerController
 import libXray.LibXray
 
-class StarlinkVpnTunnelException(
+class ExpoXrayVpnTunnelException(
   val errorCode: String,
   cause: Throwable
 ) : RuntimeException(cause.localizedMessage ?: cause.message, cause)
 
-class StarlinkVpnTunnelRuntime(
-  private val service: StarlinkVpnService
+class ExpoXrayVpnTunnelRuntime(
+  private val service: ExpoXrayVpnService
 ) {
   private var tunInterface: ParcelFileDescriptor? = null
   private var xrayStarted = false
 
-  fun start(config: StarlinkVpnRuntimeConfig) {
+  fun start(config: ExpoXrayVpnRuntimeConfig) {
     val runtimeDir = try {
       prepareRuntimeDir()
     } catch (error: Throwable) {
-      throw StarlinkVpnTunnelException(ERR_VPN_RUNTIME_FAILED, error)
+      throw ExpoXrayVpnTunnelException(ERR_VPN_RUNTIME_FAILED, error)
     }
 
     try {
       establishTun(config)
     } catch (error: Throwable) {
-      throw StarlinkVpnTunnelException(ERR_TUN_ESTABLISH_FAILED, error)
+      throw ExpoXrayVpnTunnelException(ERR_TUN_ESTABLISH_FAILED, error)
     }
 
     try {
       startXray(config, runtimeDir)
     } catch (error: Throwable) {
-      throw StarlinkVpnTunnelException(ERR_XRAY_START_FAILED, error)
+      throw ExpoXrayVpnTunnelException(ERR_XRAY_START_FAILED, error)
     }
   }
 
@@ -80,7 +80,7 @@ class StarlinkVpnTunnelRuntime(
     return runtimeDir
   }
 
-  private fun establishTun(config: StarlinkVpnRuntimeConfig) {
+  private fun establishTun(config: ExpoXrayVpnRuntimeConfig) {
     val builder = service.createVpnBuilder()
       .setSession(config.profileName ?: DEFAULT_SESSION_NAME)
       .setMtu(config.mtu)
@@ -98,12 +98,12 @@ class StarlinkVpnTunnelRuntime(
     }
   }
 
-  private fun startXray(config: StarlinkVpnRuntimeConfig, runtimeDir: File) {
+  private fun startXray(config: ExpoXrayVpnRuntimeConfig, runtimeDir: File) {
     // mphCachePath is optional. XTLS's router uses MphDomainMatcher which
     // requires a pre-built cache file. Pass empty string so it falls back
     // to the regular domain matcher.
     val mphCachePath = ""
-    val controller = StarlinkDialerController(service)
+    val controller = ExpoXrayDialerController(service)
     LibXray.registerDialerController(controller)
     LibXray.registerListenerController(controller)
     LibXray.initDns(controller, config.dnsServer)
@@ -120,7 +120,7 @@ class StarlinkVpnTunnelRuntime(
 
   private fun applyApplicationRules(
     builder: android.net.VpnService.Builder,
-    config: StarlinkVpnRuntimeConfig
+    config: ExpoXrayVpnRuntimeConfig
   ) {
     for (packageName in config.allowedApplications) {
       builder.addAllowedApplication(packageName)
@@ -159,8 +159,8 @@ class StarlinkVpnTunnelRuntime(
     return error.localizedMessage ?: error.message ?: error::class.java.simpleName
   }
 
-  private class StarlinkDialerController(
-    private val service: StarlinkVpnService
+  private class ExpoXrayDialerController(
+    private val service: ExpoXrayVpnService
   ) : DialerController {
     override fun protectFd(fd: Long): Boolean {
       return service.protect(fd.toInt())
@@ -172,7 +172,7 @@ class StarlinkVpnTunnelRuntime(
     const val ERR_VPN_RUNTIME_FAILED = "ERR_VPN_RUNTIME_FAILED"
     const val ERR_XRAY_START_FAILED = "ERR_XRAY_START_FAILED"
 
-    private const val DEFAULT_SESSION_NAME = "StarLink VPN"
-    private const val TAG = "StarlinkVpnTunnelRuntime"
+    private const val DEFAULT_SESSION_NAME = "Xray VPN"
+    private const val TAG = "ExpoXrayVpnTunnelRuntime"
   }
 }

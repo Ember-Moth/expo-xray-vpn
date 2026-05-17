@@ -1,142 +1,118 @@
-# StarLink VPN 模块使用手册
+# Expo Xray VPN Usage
 
-本文档说明 `modules/starlink-vpn` 的用途、构建方式、TypeScript 调用方式和当前限制。
+This guide explains how to use `expo-xray-vpn` as a generic Android VPN native module in an Expo or React Native application.
 
-## 模块定位
+The module is Android-only. It cannot run in Expo Go because it depends on Android `VpnService`, a foreground service, and a native `libXray.aar` runtime.
 
-`starlink-vpn` 是一个 Android-only Expo Local Module，用来把 React Native 页面层和 Android `VpnService`、`libXray.aar` 连接起来。
+## What The Module Does
 
-当前模块负责：
+`expo-xray-vpn` provides the bridge between JavaScript and Android native VPN functionality:
 
-- 申请 Android VPN 权限
-- 启动和停止前台 VPN Service
-- 创建 TUN 接口并把 TUN fd 传给 libXray
-- 为 libXray 提供 socket protect 回调
-- 启动和停止 Xray JSON 配置
-- 导出 libXray 的分享链接转换和空闲端口工具函数
+- Requests Android VPN permission.
+- Starts and stops the foreground VPN service.
+- Creates the Android TUN interface.
+- Passes the TUN file descriptor to libXray.
+- Runs Xray from a JSON configuration string.
+- Protects sockets created by libXray so they bypass the VPN tunnel.
+- Emits connection state changes to JavaScript.
+- Exposes libXray helpers for share-link conversion and free port lookup.
 
-当前模块不负责：
+The module does not generate business-specific Xray configuration, manage subscriptions, implement account logic, or provide iOS VPN support.
 
-- VPN 内核配置生成策略
-- 节点订阅、套餐、账号等业务 API
-- 流量统计轮询
-- iOS VPN 能力
+## Native Build Requirements
 
-## 运行环境
+Use a development build or a fully native Android build:
 
-该模块依赖 Android 原生代码，不能在 Expo Go 中运行。开发时需要使用 dev build：
-
-```powershell
-pnpm android
+```sh
+npx expo run:android
 ```
 
-或者打开 `android/` 原生工程后，在 Android Studio 中运行 `app`。
+If this module is used from another app, rebuild the Android project after changing native code or installing the package.
 
-如果本机环境没有自动识别 JDK 和 Android SDK，可以在当前 PowerShell 会话中设置：
+## libXray Setup
 
-```powershell
-$env:JAVA_HOME='C:\Program Files\Android\openjdk\jdk-21.0.8'
-$env:ANDROID_HOME='D:\Tools\AndroidSDK'
-$env:ANDROID_SDK_ROOT='D:\Tools\AndroidSDK'
-$env:PATH="C:\Program Files\Android\openjdk\jdk-21.0.8\bin;D:\Tools\AndroidSDK\platform-tools;$env:PATH"
-```
-
-## libXray 准备
-
-`libXray` 作为 git 子模块放在：
+For local development, place a compatible AAR at:
 
 ```text
-modules/starlink-vpn/libXray
+android/libs/libXray.aar
 ```
 
-克隆仓库后初始化子模块：
-
-```powershell
-git submodule update --init --recursive
-```
-
-进入 `modules/starlink-vpn/libXray` 后构建 Android AAR：
-
-```powershell
-python build/main.py android
-```
-
-构建产物需要放到：
+For CI or Maven-based builds, publish or provide the artifact as:
 
 ```text
-modules/starlink-vpn/android/libs/libXray.aar
+com.expo.xray.vpn:libxray:<version>@aar
 ```
 
-Gradle 会自动加载 `modules/starlink-vpn/android/libs/*.aar`。`libXray.aar` 是本地构建产物，文件较大，不进入 Git 跟踪。
+The Android Gradle module uses Maven when `CI=true` or when Gradle is invoked with `-PexpoXrayMaven`. Set `LIBXRAY_VERSION` to choose the artifact version.
 
-## TypeScript 导入
+## Importing The Module
 
-模块入口：
+Package import:
 
 ```ts
-import StarlinkVpn, {
-  type StarlinkVpnConfig,
-  type StarlinkVpnState,
-} from '../../modules/starlink-vpn';
+import ExpoXrayVpn, {
+  type ExpoXrayVpnConfig,
+  type ExpoXrayVpnState,
+} from 'expo-xray-vpn';
 ```
 
-实际页面中的相对路径按文件位置调整。例如从 `src/screens/HomeScreen.tsx` 或 `src/hooks/useVpnState.ts` 导入，通常是：
+Local workspace import examples may use a relative path instead:
 
 ```ts
-import StarlinkVpn from '../../modules/starlink-vpn';
+import ExpoXrayVpn from '../../modules/expo-xray-vpn';
 ```
 
-## 基本连接流程
+Adjust the relative path for your project layout.
 
-推荐流程：
+## Connect And Disconnect
 
-1. 调用 `requestPermission()` 申请 Android VPN 权限。
-2. 准备 `xrayConfigJson`。
-3. 调用 `connect(config)` 启动 VPN。
-4. 通过 `onStateChange` 监听连接状态。
-5. 调用 `disconnect()` 断开 VPN。
+The recommended flow is:
 
-示例：
+1. Call `requestPermission()`.
+2. Prepare an Xray JSON configuration string.
+3. Call `connect(config)`.
+4. Listen for `onStateChange` events.
+5. Call `disconnect()` when the user stops the VPN.
 
 ```ts
-import StarlinkVpn from '../../modules/starlink-vpn';
+import ExpoXrayVpn from 'expo-xray-vpn';
 
 export async function connectVpn(xrayConfigJson: string) {
-  const permission = await StarlinkVpn.requestPermission();
+  const permission = await ExpoXrayVpn.requestPermission();
 
   if (!permission.granted) {
-    throw new Error('VPN 权限未授权');
+    throw new Error('VPN permission was not granted.');
   }
 
-  return StarlinkVpn.connect({
+  return ExpoXrayVpn.connect({
     dnsServer: '1.1.1.1',
     mtu: 1500,
-    profileId: 'node-hk-01',
-    profileName: 'Hong Kong 01',
+    profileId: 'node-01',
+    profileName: 'Node 01',
     xrayConfigJson,
   });
 }
 
-export async function disconnectVpn() {
-  return StarlinkVpn.disconnect();
+export function disconnectVpn() {
+  return ExpoXrayVpn.disconnect();
 }
 ```
 
-## 状态监听
+## State Listener
 
 ```ts
 import { useEffect, useState } from 'react';
-import StarlinkVpn, { type StarlinkVpnState } from '../../modules/starlink-vpn';
+import ExpoXrayVpn, { type ExpoXrayVpnState } from 'expo-xray-vpn';
 
 export function useVpnState() {
-  const [state, setState] = useState<StarlinkVpnState>({
+  const [state, setState] = useState<ExpoXrayVpnState>({
     state: 'disconnected',
   });
 
   useEffect(() => {
-    StarlinkVpn.getState().then(setState);
+    ExpoXrayVpn.getState().then(setState);
 
-    const subscription = StarlinkVpn.addListener('onStateChange', setState);
+    const subscription = ExpoXrayVpn.addListener('onStateChange', setState);
 
     return () => {
       subscription.remove();
@@ -147,7 +123,7 @@ export function useVpnState() {
 }
 ```
 
-状态值：
+State values:
 
 - `disconnected`
 - `preparing`
@@ -156,69 +132,58 @@ export function useVpnState() {
 - `disconnecting`
 - `error`
 
-`error` 状态会带上 `error` 和 `errorCode` 字段。所有状态快照都会带上 `lastChangedAt`，连接成功后会带上 `connectedAt`。
+The `error` state includes `error` and `errorCode` when available. State snapshots include `lastChangedAt`; connected snapshots include `connectedAt`.
 
-## 分享链接转换
+## Share-Link Conversion
 
-`convertShareLinksToXrayJson(text)` 用于把分享链接文本转换为 Xray JSON。
-
-支持范围由 libXray 决定，包括：
-
-- Xray JSON
-- v2rayN plain text
-- v2rayN base64 text
-- Clash.Meta yaml
-
-示例：
+Convert share-link text to Xray JSON:
 
 ```ts
 const xrayConfigJson =
-  await StarlinkVpn.convertShareLinksToXrayJson(subscriptionText);
+  await ExpoXrayVpn.convertShareLinksToXrayJson(subscriptionText);
 
-await StarlinkVpn.connect({
-  profileName: 'Imported node',
+await ExpoXrayVpn.connect({
+  profileName: 'Imported profile',
   xrayConfigJson,
 });
 ```
 
-`convertXrayJsonToShareLinks(xrayConfigJson)` 用于把 Xray JSON 转回分享链接文本：
+Convert Xray JSON back to share-link text:
 
 ```ts
-const links = await StarlinkVpn.convertXrayJsonToShareLinks(xrayConfigJson);
+const links = await ExpoXrayVpn.convertXrayJsonToShareLinks(xrayConfigJson);
 ```
 
-## 空闲端口
+Supported input formats depend on the bundled libXray implementation.
 
-`getFreePorts(count)` 返回当前设备上可用的本地端口列表：
+## Free Ports
+
+`getFreePorts(count)` returns available local ports from libXray:
 
 ```ts
-const [socksPort, httpPort] = await StarlinkVpn.getFreePorts(2);
+const [socksPort, httpPort] = await ExpoXrayVpn.getFreePorts(2);
 ```
 
-`count` 必须大于 `0`。
+`count` must be greater than `0`.
 
-## API 参考
+## API Reference
 
 ### `requestPermission()`
 
-申请 Android VPN 权限。
-
-返回：
+Requests Android VPN permission.
 
 ```ts
-type StarlinkVpnPermissionResult = {
+type ExpoXrayVpnPermissionResult = {
   granted: boolean;
 };
 ```
 
 ### `connect(config)`
 
-启动 Android VPN Service，并把 Xray JSON 配置交给 libXray。
-
-参数：
+Starts the Android VPN service and passes the Xray JSON configuration to libXray.
 
 ```ts
-type StarlinkVpnConfig = {
+type ExpoXrayVpnConfig = {
   allowedApplications?: string[];
   disallowedApplications?: string[];
   dnsServer?: string;
@@ -232,72 +197,72 @@ type StarlinkVpnConfig = {
 };
 ```
 
-说明：
+Notes:
 
-- `xrayConfigJson` 必填。
-- `dnsServer` 默认由原生层使用 `1.1.1.1`。
-- `mtu` 默认由原生层使用 `1500`。
-- `tunAddress` 默认 `10.8.0.2`，`tunPrefix` 默认 `32`。
-- `routes` 默认全局 IPv4 路由 `0.0.0.0/0`。
-- `allowedApplications` 和 `disallowedApplications` 用于按包名配置 VPN 应用规则，二者不能同时传入。
-- `profileId` 和 `profileName` 会回传到连接状态中，方便 UI 展示当前节点。
+- `xrayConfigJson` is required.
+- `dnsServer` defaults to `1.1.1.1`.
+- `mtu` defaults to `1500`.
+- `tunAddress` defaults to `10.8.0.2`.
+- `tunPrefix` defaults to `32`.
+- `routes` defaults to `0.0.0.0/0`.
+- `allowedApplications` and `disallowedApplications` are mutually exclusive.
+- `profileId` and `profileName` are mirrored back in state snapshots.
 
 ### `disconnect()`
 
-停止 libXray，关闭 TUN 接口，并停止前台 VPN Service。
+Stops libXray, closes the TUN interface, and stops the foreground VPN service.
 
 ### `getState()`
 
-读取当前模块内存中的连接状态快照。
+Returns the current in-memory connection state snapshot.
 
 ### `protectSocket(fd)`
 
-手动调用 Android `VpnService.protect(fd)`。通常业务层不需要直接调用，libXray 的 dialer/listener controller 会自动走 protect 回调。
+Calls Android `VpnService.protect(fd)`. Application code usually does not need to call this directly because the native libXray dialer controller handles socket protection.
 
 ### `getFreePorts(count)`
 
-调用 libXray 的 `GetFreePorts`，返回空闲端口数组。
+Returns an array of available local ports.
 
 ### `convertShareLinksToXrayJson(text)`
 
-调用 libXray 的 `ConvertShareLinksToXrayJson`，返回 JSON 字符串。
+Converts share-link text into an Xray JSON string using libXray.
 
 ### `convertXrayJsonToShareLinks(xrayConfigJson)`
 
-调用 libXray 的 `ConvertXrayJsonToShareLinks`，返回分享链接文本。
+Converts an Xray JSON string into share-link text using libXray.
 
-## 错误处理
+## Error Codes
 
-原生层会把 libXray 返回的 base64 `CallResponse` 解码。如果 `success` 为 `false`，会抛出 `ERR_LIBXRAY_CALL_FAILED`。
+Common error codes include:
 
-常见错误：
+- `ERR_VPN_PERMISSION_REQUIRED`: VPN permission is required before connecting.
+- `ERR_VPN_PERMISSION_DENIED`: The user denied VPN permission.
+- `ERR_INVALID_XRAY_CONFIG`: `xrayConfigJson` is empty or invalid for the called operation.
+- `ERR_INVALID_SHARE_LINKS`: Share-link text is empty.
+- `ERR_INVALID_PORT_COUNT`: Requested port count is less than or equal to `0`.
+- `ERR_LIBXRAY_CALL_FAILED`: A libXray helper call failed.
+- `ERR_TUN_ESTABLISH_FAILED`: Android failed to create the TUN interface.
+- `ERR_XRAY_START_FAILED`: libXray failed to start Xray.
+- `ERR_VPN_RUNTIME_FAILED`: A runtime error occurred while starting the VPN.
 
-- `ERR_VPN_PERMISSION_REQUIRED`：连接前没有 VPN 权限。
-- `ERR_INVALID_XRAY_CONFIG`：`xrayConfigJson` 为空。
-- `ERR_INVALID_SHARE_LINKS`：分享链接文本为空。
-- `ERR_INVALID_PORT_COUNT`：空闲端口数量小于等于 `0`。
-- `ERR_LIBXRAY_CALL_FAILED`：libXray 调用失败。
+## Verification
 
-## 验证命令
+Run TypeScript checks after changing the JavaScript API:
 
-前端类型和格式检查：
-
-```powershell
-pnpm exec biome check .
-pnpm exec tsc --noEmit
+```sh
+npm run build
 ```
 
-Android 模块编译检查：
+Build an Android development app to verify native module registration and Kotlin compilation:
 
-```powershell
-cd android
-.\gradlew.bat :starlink-vpn:compileDebugKotlin --no-daemon --console=plain
+```sh
+npx expo run:android
 ```
 
-## 当前限制
+## Limitations
 
-- 仅支持 Android。
-- Expo Go 不支持该原生模块。
-- `onTrafficUpdate` 事件已预留，但当前还没有流量统计轮询实现。
-- VPN 是否能实际转发流量取决于传入的 `xrayConfigJson` 是否符合 libXray/Xray 的运行要求。
-- `libXray.aar` 是本地二进制产物，更新 libXray 子模块后需要重新构建并替换 AAR。
+- Android only.
+- Not supported in Expo Go.
+- `onTrafficUpdate` is reserved but not currently emitted.
+- Actual traffic forwarding depends on a valid Xray configuration and compatible libXray runtime behavior.

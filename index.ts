@@ -1,2 +1,2 @@
-export * from './src/StarlinkVpn.types';
-export { default } from './src/StarlinkVpnModule';
+export * from './src/ExpoXrayVpn.types';
+export { default } from './src/ExpoXrayVpnModule';

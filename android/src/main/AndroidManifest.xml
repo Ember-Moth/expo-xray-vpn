@@ -4,7 +4,7 @@
 
   <application>
     <service
-      android:name=".StarlinkVpnService"
+      android:name=".ExpoXrayVpnService"
       android:exported="false"
       android:foregroundServiceType="specialUse"
       android:permission="android.permission.BIND_VPN_SERVICE">

@@ -1,4 +1,4 @@
-export type StarlinkVpnConnectionState =
+export type ExpoXrayVpnConnectionState =
   | 'disconnected'
   | 'preparing'
   | 'connecting'
@@ -6,47 +6,47 @@ export type StarlinkVpnConnectionState =
   | 'disconnecting'
   | 'error';
 
-export type StarlinkVpnRoute = {
+export type ExpoXrayVpnRoute = {
   address: string;
   prefix: number;
 };
 
-export type StarlinkVpnConfig = {
+export type ExpoXrayVpnConfig = {
   allowedApplications?: string[];
   disallowedApplications?: string[];
   dnsServer?: string;
   mtu?: number;
   profileId?: string;
   profileName?: string;
-  routes?: StarlinkVpnRoute[];
+  routes?: ExpoXrayVpnRoute[];
   tunAddress?: string;
   tunPrefix?: number;
   xrayConfigJson: string;
 };
 
-export type StarlinkVpnPermissionResult = {
+export type ExpoXrayVpnPermissionResult = {
   granted: boolean;
 };
 
-export type StarlinkVpnState = {
+export type ExpoXrayVpnState = {
   connectedAt?: number;
   error?: string;
   errorCode?: string;
   lastChangedAt?: number;
   profileId?: string;
   profileName?: string;
-  state: StarlinkVpnConnectionState;
+  state: ExpoXrayVpnConnectionState;
 };
 
-export type StarlinkVpnStateChangeEvent = StarlinkVpnState;
+export type ExpoXrayVpnStateChangeEvent = ExpoXrayVpnState;
 
-export type StarlinkVpnTrafficEvent = {
+export type ExpoXrayVpnTrafficEvent = {
   downloadBytes: number;
   timestamp: number;
   uploadBytes: number;
 };
 
-export type StarlinkVpnModuleEvents = {
-  onStateChange: (event: StarlinkVpnStateChangeEvent) => void;
-  onTrafficUpdate: (event: StarlinkVpnTrafficEvent) => void;
+export type ExpoXrayVpnModuleEvents = {
+  onStateChange: (event: ExpoXrayVpnStateChangeEvent) => void;
+  onTrafficUpdate: (event: ExpoXrayVpnTrafficEvent) => void;
 };

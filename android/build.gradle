@@ -3,11 +3,11 @@ plugins {
   id 'expo-module-gradle-plugin'
 }
 
-group = 'com.starlink.vpn'
-version = System.getenv('STARLINK_VPN_VERSION') ?: '0.7.10'
+group = 'com.expo.xray.vpn'
+version = System.getenv('EXPO_XRAY_VPN_VERSION') ?: '0.7.10'
 
 android {
-  namespace "com.starlink.vpn"
+  namespace "com.expo.xray.vpn"
   defaultConfig {
     versionCode 1
     versionName project.version
@@ -19,24 +19,24 @@ android {
 
 // ── libXray AAR ───────────────────────────────────────────────────────────
 // The native AAR is resolved with the following priority:
-//   1. Maven artifact (GitHub Packages) — when CI env or starlinkMaven prop
+//   1. Maven artifact (GitHub Packages) — when CI env or expoXrayMaven prop
 //   2. Local file (libs/libXray.aar)     — local development fallback
 // --------------------------------------------------------------------------
-def useMaven = System.getenv('CI') == 'true' || project.hasProperty('starlinkMaven')
+def useMaven = System.getenv('CI') == 'true' || project.hasProperty('expoXrayMaven')
 def libxrayVersion = System.getenv('LIBXRAY_VERSION') ?: '1.260509.0-patch'
 
 dependencies {
   if (useMaven) {
-    logger.lifecycle("starlink-vpn: using libXray from Maven (${libxrayVersion})")
-    compileOnly "com.starlink.vpn:libxray:${libxrayVersion}@aar"
+    logger.lifecycle("expo-xray-vpn: using libXray from Maven (${libxrayVersion})")
+    compileOnly "com.expo.xray.vpn:libxray:${libxrayVersion}@aar"
   } else {
     def localAar = file('libs/libXray.aar')
     if (localAar.exists()) {
-      logger.lifecycle("starlink-vpn: using libXray from local file (${localAar})")
+      logger.lifecycle("expo-xray-vpn: using libXray from local file (${localAar})")
       compileOnly fileTree(dir: 'libs', include: ['*.aar'])
     } else {
-      logger.warn("starlink-vpn: libXray.aar not found locally, trying Maven fallback...")
-      compileOnly "com.starlink.vpn:libxray:${libxrayVersion}@aar"
+      logger.warn("expo-xray-vpn: libXray.aar not found locally, trying Maven fallback...")
+      compileOnly "com.expo.xray.vpn:libxray:${libxrayVersion}@aar"
     }
   }
 }
@@ -48,7 +48,7 @@ def geoAssetDir = file("src/main/assets/xray")
 
 tasks.register('downloadGeoData') {
   description = 'Download latest Xray geo data (geoip.dat, geosite.dat)'
-  group = 'starlink-vpn'
+  group = 'expo-xray-vpn'
 
   def geoAssets = [
     'geoip.dat'   : 'https://github.com/v2fly/geoip/releases/latest/download/geoip.dat',

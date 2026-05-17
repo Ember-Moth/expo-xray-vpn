@@ -1,4 +1,4 @@
-package com.starlink.vpn
+package com.expo.xray.vpn
 
 import android.util.Base64
 import org.json.JSONObject
