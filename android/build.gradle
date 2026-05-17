@@ -9,7 +9,6 @@ version = System.getenv('EXPO_XRAY_VPN_VERSION') ?: '0.7.10'
 android {
   namespace "com.expo.xray.vpn"
   defaultConfig {
-    versionCode 1
     versionName project.version
   }
   lintOptions {
@@ -18,41 +17,88 @@ android {
 }
 
 // ── libXray AAR ───────────────────────────────────────────────────────────
-// The native AAR is resolved with the following priority:
-//   1. Maven artifact (GitHub Packages) — when CI env or expoXrayMaven prop
-//   2. Local file (libs/libXray.aar)     — local development fallback
+// The native AAR is published two ways:
+//   1. Bundled in npm package (android/libs/libXray.aar) — resolves without auth,
+//      works offline.  Content is extracted: classes.jar → implementation JAR,
+//      libgojni.so → jniLibs (both end up in the module's published AAR).
+//   2. Maven artifact (GitHub Packages) — used by CI; requires GITHUB_TOKEN.
 // --------------------------------------------------------------------------
-def useMaven = System.getenv('CI') == 'true' || project.hasProperty('expoXrayMaven')
-def libxrayVersion = System.getenv('LIBXRAY_VERSION') ?: '1.260509.0-patch'
+
+def libxrayAar = file('libs/libXray.aar')
+def useLocalAar = libxrayAar.exists()
+
+// ── Extraction targets ──────────────────────────────────────────────────
+def jniLibsDir    = file("${buildDir}/intermediates/libxray-jniLibs")
+def classesJarDir = file("${buildDir}/intermediates/libxray-classes")
+def classesJar    = file("${classesJarDir}/libxray-classes.jar")
+
+// ── Export jniLibs from the AAR ─────────────────────────────────────────
+// Extracted .so files are added to the module's jniLibs source set so they
+// are included in the module's own AAR and reach the consumer transitively.
+tasks.register('extractXrayAar') {
+  description = 'Extract .so + classes.jar from libXray.aar'
+  group = 'expo-xray-vpn'
+
+  onlyIf { useLocalAar }
+  inputs.file  libxrayAar
+  outputs.dir  jniLibsDir
+  outputs.file classesJar
+
+  doLast {
+    // 1. JNI .so → jniLibs
+    // AAR stores .so at jni/<abi>/libgojni.so; jniLibs expects <abi>/libgojni.so
+    jniLibsDir.deleteDir()
+    copy {
+      from zipTree(libxrayAar)
+      include 'jni/**/*.so'
+      eachFile { fcp ->
+        fcp.path = fcp.sourcePath - 'jni/'
+      }
+      includeEmptyDirs false
+      into jniLibsDir
+    }
+    logger.lifecycle("libXray .so extracted → ${jniLibsDir}")
+
+    // 2. classes.jar → implementation JAR
+    classesJarDir.mkdirs()
+    copy {
+      from zipTree(libxrayAar)
+      into classesJarDir
+      include 'classes.jar'
+    }
+    file("${classesJarDir}/classes.jar").renameTo(classesJar)
+    logger.lifecycle("libXray classes.jar extracted → ${classesJar}")
+  }
+}
+
+// Add extracted jniLibs to source set (→ included in module's AAR)
+android.sourceSets.main.jniLibs.srcDirs += jniLibsDir
+
+// Wire extraction before any Kotlin compilation and jniLib merging
+tasks.whenTaskAdded { task ->
+  if (useLocalAar) {
+    if (task.name.startsWith('compile') && task.name.endsWith('Kotlin')) {
+      task.dependsOn extractXrayAar
+    }
+    if (task.name.startsWith('merge') && task.name.endsWith('JniLibFolders')) {
+      task.dependsOn extractXrayAar
+    }
+  }
+}
 
 dependencies {
-  if (useMaven) {
-    logger.lifecycle("expo-xray-vpn: using libXray from Maven (${libxrayVersion})")
-    implementation "com.expo.xray.vpn:libxray:${libxrayVersion}@aar"
+  if (useLocalAar) {
+    // Local AAR shipped with npm: extract + implementation JAR
+    // (AGP allows local .jar in library modules; .aar is forbidden.)
+    logger.lifecycle("expo-xray-vpn: using bundled AAR → extracting .so + classes.jar")
+    implementation files(classesJar)
+
   } else {
-    def localAar = file('libs/libXray.aar')
-    if (localAar.exists()) {
-      // AGP 8+ forbids local .aar dependencies in library modules.
-      // Extract classes.jar from the AAR and add as compileOnly JAR instead.
-      logger.lifecycle("expo-xray-vpn: extracting libXray classes.jar for compilation")
-      def aarExtractDir = file("${buildDir}/libxray-aar")
-      def classesJar = file("${aarExtractDir}/libxray-classes.jar")
-      if (!classesJar.exists()) {
-        aarExtractDir.mkdirs()
-        copy {
-          from zipTree(localAar)
-          into aarExtractDir
-          include 'classes.jar'
-        }
-        file("${aarExtractDir}/classes.jar").renameTo(classesJar)
-      }
-      compileOnly files(classesJar)
-      // libgojni.so is extracted by the consumer build script into jniLibs
-      logger.lifecycle("expo-xray-vpn: libgojni.so will be provided via jniLibs by consumer")
-    } else {
-      logger.warn("expo-xray-vpn: libXray.aar not found locally, trying Maven fallback...")
-      implementation "com.expo.xray.vpn:libxray:${libxrayVersion}@aar"
-    }
+    // Maven fallback (CI): pull AAR from GitHub Packages
+    // Repositories are configured in the root project build.gradle.
+    def libxrayVersion = System.getenv('LIBXRAY_VERSION') ?: '1.260509.0-patch'
+    logger.lifecycle("expo-xray-vpn: local AAR not found, using Maven (${libxrayVersion})")
+    implementation "com.expo.xray.vpn:libxray:${libxrayVersion}@aar"
   }
 }
 

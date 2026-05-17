@@ -29,7 +29,7 @@
     "README.md",
     "USAGE.md",
     "!android/build/",
-    "!android/libs/libXray.aar",
+    "!android/libs/libXray.aar.sha256",
     "!android/src/main/assets/xray/*.dat"
   ],
   "scripts": {
