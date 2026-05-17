@@ -1,0 +1,106 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'com.expo.xray.vpn'
+version = System.getenv('EXPO_XRAY_VPN_VERSION') ?: '0.7.10'
+
+android {
+  namespace "com.expo.xray.vpn"
+  defaultConfig {
+    versionCode 1
+    versionName project.version
+  }
+  lintOptions {
+    abortOnError false
+  }
+}
+
+// ── libXray AAR ───────────────────────────────────────────────────────────
+// The native AAR is resolved with the following priority:
+//   1. Maven artifact (GitHub Packages) — when CI env or expoXrayMaven prop
+//   2. Local file (libs/libXray.aar)     — local development fallback
+// --------------------------------------------------------------------------
+def useMaven = System.getenv('CI') == 'true' || project.hasProperty('expoXrayMaven')
+def libxrayVersion = System.getenv('LIBXRAY_VERSION') ?: '1.260509.0-patch'
+
+dependencies {
+  if (useMaven) {
+    logger.lifecycle("expo-xray-vpn: using libXray from Maven (${libxrayVersion})")
+    implementation "com.expo.xray.vpn:libxray:${libxrayVersion}@aar"
+  } else {
+    def localAar = file('libs/libXray.aar')
+    if (localAar.exists()) {
+      // AGP 8+ forbids local .aar dependencies in library modules.
+      // Extract classes.jar from the AAR and add as compileOnly JAR instead.
+      logger.lifecycle("expo-xray-vpn: extracting libXray classes.jar for compilation")
+      def aarExtractDir = file("${buildDir}/libxray-aar")
+      def classesJar = file("${aarExtractDir}/libxray-classes.jar")
+      if (!classesJar.exists()) {
+        aarExtractDir.mkdirs()
+        copy {
+          from zipTree(localAar)
+          into aarExtractDir
+          include 'classes.jar'
+        }
+        file("${aarExtractDir}/classes.jar").renameTo(classesJar)
+      }
+      compileOnly files(classesJar)
+      // libgojni.so is extracted by the consumer build script into jniLibs
+      logger.lifecycle("expo-xray-vpn: libgojni.so will be provided via jniLibs by consumer")
+    } else {
+      logger.warn("expo-xray-vpn: libXray.aar not found locally, trying Maven fallback...")
+      implementation "com.expo.xray.vpn:libxray:${libxrayVersion}@aar"
+    }
+  }
+}
+
+// ── Geo data download ─────────────────────────────────────────────────────
+// Downloads geoip.dat / geosite.dat before the first compile if missing.
+// --------------------------------------------------------------------------
+def geoAssetDir = file("src/main/assets/xray")
+
+tasks.register('downloadGeoData') {
+  description = 'Download latest Xray geo data (geoip.dat, geosite.dat)'
+  group = 'expo-xray-vpn'
+
+  def geoAssets = [
+    'geoip.dat'   : 'https://github.com/v2fly/geoip/releases/latest/download/geoip.dat',
+    'geosite.dat' : 'https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat',
+  ]
+
+  outputs.dir(geoAssetDir)
+
+  doLast {
+    geoAssetDir.mkdirs()
+    geoAssets.each { name, url ->
+      def targetFile = file("${geoAssetDir}/${name}")
+      if (targetFile.exists()) {
+        logger.lifecycle("  ✔ ${name} already exists, skipping.")
+        return
+      }
+      logger.lifecycle("  ↓ Downloading ${name} ...")
+      def urlObj = new URL(url)
+      def conn = urlObj.openConnection()
+      conn.connectTimeout = 30000
+      conn.readTimeout = 60000
+      targetFile.withOutputStream { out ->
+        out << conn.inputStream
+      }
+      logger.lifecycle(
+        "  ✔ ${name} downloaded (${String.format('%.1f', targetFile.length() / 1_048_576)} MB)"
+      )
+    }
+  }
+}
+
+// Wire geo download just before Kotlin compilation and asset merging
+tasks.whenTaskAdded { task ->
+  if (task.name.startsWith('compile') && task.name.endsWith('Kotlin')) {
+    task.dependsOn downloadGeoData
+  }
+  if (task.name.startsWith('merge') && task.name.endsWith('Assets')) {
+    task.dependsOn downloadGeoData
+  }
+}
