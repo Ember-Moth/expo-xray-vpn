@@ -24,7 +24,7 @@ allprojects {
   repositories {
     google()
     mavenCentral()
-    maven { url 'https://maven.pkg.github.com/Ember-Moth/libXray' }
+    maven { url 'https://maven.pkg.github.com/Ember-Moth/expo-xray-vpn' }
   }
 }
 ```
