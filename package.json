@@ -26,6 +26,7 @@
     "build/",
     "expo-module.config.json",
     "android/",
+    "android/libs/libXray.aar",
     "README.md",
     "USAGE.md",
     "!android/build/",
