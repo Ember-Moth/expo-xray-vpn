@@ -1,6 +1,6 @@
 {
   "name": "expo-xray-vpn",
-  "version": "0.7.17",
+  "version": "0.7.18",
   "description": "Expo native module for Android VPN — VpnService with Xray-core engine",
   "main": "build/index.js",
   "types": "build/index.d.ts",
