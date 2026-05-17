@@ -67,7 +67,6 @@ jobs:
 
       - name: Install dependencies
         run: |
-          npm install -g npm@latest
           npm install --ignore-scripts
 
       - name: Build TypeScript
