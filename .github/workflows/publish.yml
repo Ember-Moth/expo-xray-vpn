@@ -98,6 +98,7 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           export LIBXRAY_VERSION="$VERSION"
           cd libXray/publish
+          gradle wrapper --gradle-version 8.12
           ./gradlew publishAarPublicationToGitHubPackagesRepository
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
