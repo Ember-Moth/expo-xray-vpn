@@ -39,3 +39,6 @@ Thumbs.db
 # Env
 .env
 .env.local
+
+# npm
+.npmrc
