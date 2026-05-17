@@ -14,7 +14,6 @@ android {
   lintOptions {
     abortOnError false
   }
-  consumerProguardFiles 'proguard-rules.pro'
 }
 
 // ── libXray AAR ───────────────────────────────────────────────────────────
