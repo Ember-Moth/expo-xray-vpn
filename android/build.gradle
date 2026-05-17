@@ -66,8 +66,13 @@ tasks.register('downloadGeoData') {
         return
       }
       logger.lifecycle("  ↓ Downloading ${name} ...")
-      def ant = new groovy.util.AntBuilder()
-      ant.get(src: url, dest: targetFile, skipexisting: false)
+      def urlObj = new URL(url)
+      def conn = urlObj.openConnection()
+      conn.connectTimeout = 30000
+      conn.readTimeout = 60000
+      targetFile.withOutputStream { out ->
+        out << conn.inputStream
+      }
       logger.lifecycle(
         "  ✔ ${name} downloaded (${String.format('%.1f', targetFile.length() / 1_048_576)} MB)"
       )
@@ -75,9 +80,12 @@ tasks.register('downloadGeoData') {
   }
 }
 
-// Wire geo download just before Kotlin compilation
+// Wire geo download just before Kotlin compilation and asset merging
 tasks.whenTaskAdded { task ->
   if (task.name.startsWith('compile') && task.name.endsWith('Kotlin')) {
+    task.dependsOn downloadGeoData
+  }
+  if (task.name.startsWith('merge') && task.name.endsWith('Assets')) {
     task.dependsOn downloadGeoData
   }
 }
