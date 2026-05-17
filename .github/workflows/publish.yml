@@ -90,7 +90,8 @@ jobs:
 
       - name: Publish to npm
         run: |
-          npm publish --provenance
+          unset NODE_AUTH_TOKEN
+          npm publish
 
       - name: Publish AAR to GitHub Packages
         run: |
