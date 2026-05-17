@@ -11,8 +11,8 @@ version = System.getenv("EXPO_XRAY_VPN_VERSION") ?: "0.7.10"
 android {
   namespace = "com.expo.xray.vpn"
   defaultConfig {
-    versionCode = 1
-    versionName = project.version.toString()
+    versionCode.set(1)
+    versionName.set(project.version.toString())
   }
   lint {
     abortOnError = false
