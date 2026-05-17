@@ -1,0 +1,31 @@
+# Source
+src/
+tsconfig.json
+*.tsbuildinfo
+
+# Dependencies
+node_modules/
+libXray/
+
+# Build outputs (we publish build/)
+android/build/
+android/.gradle/
+android/local.properties
+
+# Large binaries (downloaded at build time or from Maven)
+android/libs/libXray.aar
+android/src/main/assets/xray/*.dat
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.gitmodules

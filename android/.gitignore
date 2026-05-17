@@ -1,0 +1,4 @@
+/build/
+/libs/*.aar
+!/libs/.gitkeep
+/src/main/assets/xray/*.dat

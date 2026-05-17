@@ -1,0 +1,51 @@
+{
+  "name": "expo-xray-vpn",
+  "version": "0.7.10",
+  "description": "Expo native module for Android VPN — VpnService with Xray-core engine",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "sideEffects": false,
+  "license": "MIT",
+  "keywords": [
+    "expo",
+    "react-native",
+    "vpn",
+    "xray",
+    "android",
+    "expo-module"
+  ],
+  "homepage": "https://github.com/Ember-Moth/expo-xray-vpn",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Ember-Moth/expo-xray-vpn.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Ember-Moth/expo-xray-vpn/issues"
+  },
+  "files": [
+    "build/",
+    "expo-module.config.json",
+    "android/",
+    "README.md",
+    "USAGE.md",
+    "!android/build/",
+    "!android/libs/libXray.aar",
+    "!android/src/main/assets/xray/*.dat"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf build",
+    "prepublishOnly": "pnpm build",
+    "lint": "biome check .",
+    "format": "biome format --write ."
+  },
+  "peerDependencies": {
+    "expo": "*",
+    "react-native": "*"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.14",
+    "expo-modules-core": "55.0.25",
+    "typescript": "~5.9.3"
+  }
+}

@@ -1,0 +1,3 @@
+[submodule "libXray"]
+	path = libXray
+	url = https://github.com/Ember-Moth/libXray.git

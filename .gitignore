@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# TypeScript build output
+build/
+*.tsbuildinfo
+
+# Android build outputs
+android/build/
+android/.gradle/
+android/local.properties
+
+# Large binaries (downloaded at build time or from Maven)
+android/libs/libXray.aar
+android/src/main/assets/xray/*.dat
+
+# libXray build artifacts
+libXray/dat/
+libXray/libXray.aar
+libXray/libXray-sources.jar
+libXray/__pycache__/
+
+# libXray publish build
+libXray/publish/.gradle/
+libXray/publish/gradle/
+libXray/publish/build/
+libXray/publish/gradlew
+libXray/publish/gradlew.bat
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
