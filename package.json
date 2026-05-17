@@ -1,7 +1,7 @@
 {
   "name": "expo-xray-vpn",
-  "version": "0.7.28",
-  "description": "Expo native module for Android VPN — VpnService with Xray-core engine",
+  "version": "0.7.29",
+  "description": "Expo native module for Android VPN \u2014 VpnService with Xray-core engine",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "sideEffects": false,
@@ -30,6 +30,8 @@
     "README.md",
     "USAGE.md",
     "!android/build/",
+    "!android/.gradle/",
+    "!android/local.properties",
     "!android/libs/libXray.aar.sha256",
     "!android/src/main/assets/xray/*.dat"
   ],
