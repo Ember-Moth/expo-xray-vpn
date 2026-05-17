@@ -62,8 +62,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          # NOTE: no registry-url — we configure auth manually in the publish step
-          # to prevent NODE_AUTH_TOKEN from interfering with OIDC Trusted Publisher
+          # NOTE: no registry-url. Trusted Publishing should use GitHub OIDC,
+          # not a token written by setup-node/npm config.
 
       - name: Install dependencies
         run: |
@@ -91,7 +91,7 @@ jobs:
 
       - name: Publish to npm
         run: |
-          npm publish --provenance --access public
+          npx --yes npm@11.6.2 publish --provenance --access public
 
       - name: Publish AAR to GitHub Packages
         run: |
