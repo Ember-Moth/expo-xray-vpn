@@ -62,10 +62,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
+          # NOTE: no registry-url — we configure auth manually in the publish step
+          # to prevent NODE_AUTH_TOKEN from interfering with OIDC Trusted Publisher
 
       - name: Install dependencies
         run: |
+          npm install -g npm@latest
           npm install --ignore-scripts
 
       - name: Build TypeScript
@@ -90,8 +92,7 @@ jobs:
 
       - name: Publish to npm
         run: |
-          unset NODE_AUTH_TOKEN
-          npm publish
+          npm publish --provenance --access public
 
       - name: Publish AAR to GitHub Packages
         run: |
