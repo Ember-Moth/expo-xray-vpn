@@ -99,10 +99,6 @@ class ExpoXrayVpnTunnelRuntime(
   }
 
   private fun startXray(config: ExpoXrayVpnRuntimeConfig, runtimeDir: File) {
-    // mphCachePath is optional. XTLS's router uses MphDomainMatcher which
-    // requires a pre-built cache file. Pass empty string so it falls back
-    // to the regular domain matcher.
-    val mphCachePath = ""
     val controller = ExpoXrayDialerController(service)
     LibXray.registerDialerController(controller)
     LibXray.registerListenerController(controller)
@@ -111,7 +107,6 @@ class ExpoXrayVpnTunnelRuntime(
 
     val runRequest = LibXray.newXrayRunFromJSONRequest(
       runtimeDir.absolutePath,
-      mphCachePath,
       config.xrayConfigJson
     )
     LibXrayResponse.requireSuccess(LibXray.runXrayFromJSON(runRequest))
